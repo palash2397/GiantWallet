@@ -253,7 +253,7 @@ export const loginHandle = async (req, res) => {
         .status(400)
         .json(new ApiResponse(400, {}, `Invalid credentials`));
     const token = jwt.sign(
-      { userId: user._id, role: user.role, email: user.email },
+      { id: user._id, role: user.role, email: user.email },
       process.env.JWT_SECRET,
       { expiresIn: "30d" }
     );
