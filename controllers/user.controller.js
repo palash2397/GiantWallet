@@ -4,6 +4,7 @@ import Joi from "joi";
 import { generateOtp, getExpirationTime } from "../utils/helpers.js";
 import { User } from "../models/user/user.js";
 import { sendOtpMail, sendOtpforgotPasswordMail } from "../utils/email.js";
+import { deleteOldImages } from "../utils/helpers.js";
 
 export const registerHandle = async (req, res) => {
   try {
@@ -262,6 +263,7 @@ export const loginHandle = async (req, res) => {
       userId: user._id,
       fullName: user.fullName,
       email: user.email,
+      role: user.role,
       token: token,
     };
 
@@ -514,15 +516,121 @@ export const verifyPinHandle = async (req, res) => {
   }
 };
 
-
-export const changePinHandle = async(req, res)=>{
+export const changePinHandle = async (req, res) => {
   try {
-    
   } catch (error) {
     console.log(`Error while changing pin :`, error);
     return res
       .status(500)
       .json(new ApiResponse(500, {}, `Internal Server Error`));
-    
   }
-}
+};
+
+export const updateProfileHandle = async (req, res) => {
+  try {
+    const { fullName, latitude, longitude } = req.body;
+    const schema = Joi.object({
+      fullName: Joi.string().min(3).max(30).optional(),
+      latitude: Joi.string().optional(),
+      longitude: Joi.string().optional(),
+    });
+
+    // console.log("req.file -------->", req.file)
+    const { error } = schema.validate(req.body);
+    if (error)
+      return res
+        .status(400)
+        .json({ status: false, message: error.details[0].message });
+
+    const user = await User.findOne({ _id: req.user.id });
+    // console.log("user ----->", user);
+    if (!user)
+      return res.status(404).json(new ApiResponse(404, {}, `User not found`));
+
+    if (req.file) deleteOldImages("profile", user.avatar);
+
+    fullName ? (user.fullName = fullName) : user.fullName;
+    req.file ? (user.avatar = req.file.filename) : user.avatar;
+    latitude
+      ? ((user.latitude = latitude), (user.longitude = longitude))
+      : user.latitude,
+      user.longitude;
+
+    await user.save();
+
+    return res
+      .status(200)
+      .json(new ApiResponse(200, {}, `Profile updated successfully.`));
+  } catch (error) {
+    console.log(`Error while updating profile :`, error);
+    return res
+      .status(501)
+      .json(new ApiResponse(500, {}, `Internal Server Error`));
+  }
+};
+
+export const myProfileHandle = async (req, res) => {
+  try {
+    const user = await User.findOne({ _id: req.user.id }).select(
+      "-password -otp -otpExpireAt -__v -createdAt -updatedAt -pin -otpVerifiedForResetPassword"
+    );
+
+    if (!user)
+      return res.status(404).json(new ApiResponse(404, {}, `User not found`));
+
+    if (!user.isActive)
+      return res
+        .status(400)
+        .json(
+          new ApiResponse(400, {}, `your account has been temporarily blocked.`)
+        );
+
+    user.avatar = user.avatar
+      ? `${process.env.BASE_URL}/profile/${user.avatar}`
+      : `${process.env.DEFAULT_PROFILE_PIC}`;
+
+    return res
+      .status(200)
+      .json(new ApiResponse(200, user, `Profile fetched successfully.`));
+  } catch (error) {
+    console.log(`Error while fetching profile :`, error);
+    return res
+      .status(501)
+      .json(new ApiResponse(500, {}, `Internal Server Error`));
+  }
+};
+
+export const deleteAvatarHandle = async (req, res) => {
+  try {
+    const user = await User.findOne({ _id: req.user.id });
+    if (!user)
+      return res.status(404).json(new ApiResponse(404, {}, `User not found`));
+
+    if (!user.isActive)
+      return res
+        .status(400)
+        .json(
+          new ApiResponse(400, {}, `your account has been temporarily blocked.`)
+        );
+
+    if (!user.avatar)
+      return res
+        .status(400)
+        .json(new ApiResponse(400, {}, `Profile image not found.`));
+
+
+    deleteOldImages("profile", user.avatar);
+    user.avatar = null;
+    await user.save();
+
+    return res
+      .status(200)
+      .json(new ApiResponse(200, {}, `Profile image deleted successfully.`));
+    
+  } catch (error) {
+    console.log(`Error while deleting profile image :`, error);
+    return res
+      .status(501)
+      .json(new ApiResponse(500, {}, `Internal Server Error`));
+  }
+};

@@ -1,11 +1,12 @@
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 
+
 const userSchema = new mongoose.Schema(
   {
     fullName: {
       type: String,
-      required: true,
+      required: false,
     },
     email: {
       type: String,
@@ -14,12 +15,39 @@ const userSchema = new mongoose.Schema(
     },
     phone: {
       type: String,
-      required: true,
+      required: false,
       unique: true,
+      sparse: true,
     },
     password: {
       type: String,
-      required: true,
+      required: false,
+    },
+
+    latitude: {
+      type: String,
+      default: null,
+    },
+
+    longitude: {
+      type: String,
+      default: null,
+    },
+
+    avatar: {
+      type: String,
+      default: null,
+    },
+
+    googleId: {
+      type: String,
+      default: null,
+    },
+
+    provider: {
+      type: String,
+      enum: ["local", "google"],
+      default: "local",
     },
 
     otp: {
@@ -39,7 +67,7 @@ const userSchema = new mongoose.Schema(
 
     role: {
       type: String,
-      enum: ["user", "admin"],
+      enum: ["user", "admin", "superAdmin"],
       default: "user",
     },
 

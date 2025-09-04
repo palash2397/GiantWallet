@@ -16,3 +16,24 @@ export const auth = (req, res, next) => {
     res.status(401).json(new ApiResponse(401, {}, `Invalid token`));
   }
 };
+
+
+export const isSuperAdmin = (req, res, next) => {
+  console.log("User Role:", req.user.role);
+  if (req.user.role !== 'superAdmin') {
+   
+     return res.status(401).json(new ApiResponse(401, {}, "Access is forbidden"));
+  }
+  next();
+};
+
+
+export const isAdmin = (req, res, next) => {
+  console.log("User Role:", req.user.role);
+  if (req.user.role !== 'admin' || req.user.role !== 'superAdmin') {
+   
+     return res.status(401).json(new ApiResponse(401, {}, "Access is forbidden"));
+  }
+  next();
+};
+

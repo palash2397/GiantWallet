@@ -1,12 +1,11 @@
-import express from "express"
+import express from "express";
 import morgan from "morgan";
 import { connectDB } from "./DB/config.js";
-import cors from "cors"
-import "dotenv/config.js"
-
+import cors from "cors";
+import "dotenv/config.js";
 
 const app = express();
-const port = process.env.PORT 
+const port = process.env.PORT;
 
 connectDB();
 
@@ -17,25 +16,24 @@ app.post(
   stripeWebhookHandle
 );
 
-app.use(morgan("dev"))
-app.use(express.json())
-app.use(express.urlencoded({extended:true}))
-app.use(cors({
-    origin: process.env.CORS_ORIGIN 
-}))
+app.use(morgan("dev"));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(
+  cors({
+    origin: process.env.CORS_ORIGIN,
+  })
+);
 
+app.use("/api/v1",express.static("public"))
 
-import rootRouter from "./routes/root.routes.js"
-app.use("/api/v1", rootRouter)
+import rootRouter from "./routes/root.routes.js";
+app.use("/api/v1", rootRouter);
 
+app.get("/", (req, res) => {
+  res.send("Hello World");
+});
 
-
-
-app.get("/", (req, res)=>{
-    res.send("Hello World")
-})
-
-
-app.listen(port, ()=>{
-    console.log(`Server is running on port ${port}`);
-})
+app.listen(port, () => {
+  console.log(`Server is running on port ${port}`);
+});
