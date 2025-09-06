@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 
 const donationCampaignSchema = new mongoose.Schema(
+
   {
     foundation: {
       type: mongoose.Schema.Types.ObjectId,
@@ -11,7 +12,7 @@ const donationCampaignSchema = new mongoose.Schema(
     description: { type: String },
     image: { type: String }, // main banner
     raisedAmount: { type: Number, default: 0 },
-    eventDate: { type: Date }, // for campaign date
+    eventDate: { type: String }, 
     location: { type: String },
     participants: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
     status: {
@@ -23,4 +24,4 @@ const donationCampaignSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-export default mongoose.model("DonationCampaign", donationCampaignSchema);
+export const Campaign = mongoose.model("Campaign", donationCampaignSchema);

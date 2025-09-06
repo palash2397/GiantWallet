@@ -12,11 +12,22 @@ export const generateOtp = () => {
   return Math.floor(1000 + Math.random() * 9000).toString();
 };
 
-
 export const deleteOldImages = (folder, file) => {
-  if (!file) return;
-  const p = path.join(__dirname, "..", "public", folder, file);
-  fs.existsSync(p)
-    ? (fs.unlinkSync(p), console.log("Deleted:", p))
-    : console.log("No file:", p);
+  try {
+    if (!file) return;
+    const p = path.join(__dirname, "..", "public", folder, file);
+    fs.existsSync(p)
+      ? (fs.unlinkSync(p), console.log("Deleted:", p))
+      : console.log("No file:", p);
+  } catch (error) {
+    console.log("error while deleting file --------->", error);
+  }
+};
+
+// utils/setUploadPath.js
+export const setUploadPath = (folder) => {
+  return (req, res, next) => {
+    req.folderType = folder;
+    next();
+  };
 };

@@ -1,6 +1,7 @@
 import { ApiResponse } from "../utils/ApiReponse.js";
 import jwt from "jsonwebtoken";
 import Joi from "joi";
+import { sendSms } from "../utils/twillo.js";
 import { generateOtp, getExpirationTime } from "../utils/helpers.js";
 import { User } from "../models/user/user.js";
 import { sendOtpMail, sendOtpforgotPasswordMail } from "../utils/email.js";
@@ -61,8 +62,17 @@ export const registerHandle = async (req, res) => {
       otpExpireAt,
     });
 
-    await user.save();
+    let msg = `Your verification code is ${otp}. It will expire in 5 minutes. Do not share this code with anyone`;
+    const smsResult = await sendSms(phone, msg);
+    if (!smsResult.success)
+      return res
+        .status(403)
+        .json(
+          new ApiResponse(400, {}, `Something went wrong while sending sms`)
+        );
+
     await sendOtpMail(fullName, otp, email);
+    await user.save();
 
     console.log(` OTP ---------> ${otp} `);
 
@@ -264,6 +274,7 @@ export const loginHandle = async (req, res) => {
       fullName: user.fullName,
       email: user.email,
       role: user.role,
+      isPinCreated: user.pin ? true : false,
       token: token,
     };
 
@@ -618,7 +629,6 @@ export const deleteAvatarHandle = async (req, res) => {
         .status(400)
         .json(new ApiResponse(400, {}, `Profile image not found.`));
 
-
     deleteOldImages("profile", user.avatar);
     user.avatar = null;
     await user.save();
@@ -626,9 +636,71 @@ export const deleteAvatarHandle = async (req, res) => {
     return res
       .status(200)
       .json(new ApiResponse(200, {}, `Profile image deleted successfully.`));
-    
   } catch (error) {
     console.log(`Error while deleting profile image :`, error);
+    return res
+      .status(501)
+      .json(new ApiResponse(500, {}, `Internal Server Error`));
+  }
+};
+
+export const changePasswordHandle = async (req, res) => {
+  try {
+    const { oldPassword, newPassword, confirmPassword } = req.body;
+    const schema = Joi.object({
+      oldPassword: Joi.string().min(6).required(),
+      newPassword: Joi.string().min(6).required(),
+      confirmPassword: Joi.string()
+        .min(6)
+        .required()
+        .valid(Joi.ref("newPassword"))
+        .messages({
+          "any.only": "Confirm password must match password",
+        }),
+    });
+
+    const { error } = schema.validate(req.body);
+    if (error)
+      return res
+        .status(400)
+        .json({ status: false, message: error.details[0].message });
+    const user = await User.findOne({ _id: req.user.id });
+
+    if (!user)
+      return res.status(404).json(new ApiResponse(404, {}, `User not found`));
+
+    if (!user.isActive)
+      return res
+        .status(400)
+        .json(
+          new ApiResponse(400, {}, `your account has been temporarily blocked.`)
+        );
+
+    const isCorrectPassword = await user.isPasswordCorrect(oldPassword);
+    if (!isCorrectPassword)
+      return res
+        .status(400)
+        .json(new ApiResponse(400, {}, `Old password is incorrect.`));
+
+    if (oldPassword === newPassword)
+      return res
+        .status(400)
+        .json(
+          new ApiResponse(
+            400,
+            {},
+            `You have entered your old password. Please enter a new password.`
+          )
+        );
+
+    user.password = newPassword;
+    await user.save();
+
+    return res
+      .status(200)
+      .json(new ApiResponse(200, {}, `Password changed successfully.`));
+  } catch (error) {
+    console.log(`Error while changing password :`, error);
     return res
       .status(501)
       .json(new ApiResponse(500, {}, `Internal Server Error`));

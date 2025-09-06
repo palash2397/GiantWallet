@@ -10,10 +10,12 @@ import {
   verifyPinHandle,
   updateProfileHandle,
   myProfileHandle,
-  deleteAvatarHandle
+  deleteAvatarHandle,
+  changePasswordHandle
 } from "../controllers/user.controller.js";
 import { auth } from "../middlewares/auth.js";
 import { upload } from "../middlewares/multer.js";
+import { setUploadPath } from "../utils/helpers.js";
 
 const userRouter = Router();
 
@@ -25,9 +27,11 @@ userRouter.post("/forgot-password", forgotPasswordHandle);
 userRouter.post("/reset-password", resetPasswordHandle);
 userRouter.post("/create-pin", auth, createPinHandle);
 userRouter.post("/verify-pin", auth, verifyPinHandle);
-userRouter.patch("/update-profile", auth, upload.single("image"), updateProfileHandle);
+userRouter.patch("/update-profile", auth, setUploadPath("profile"), upload.single("image"), updateProfileHandle);
 userRouter.get("/my-profile", auth, myProfileHandle)
 userRouter.delete("/avatar", auth, deleteAvatarHandle)
+userRouter.patch("/change-password", auth, changePasswordHandle)
+
 
 
 export default userRouter;

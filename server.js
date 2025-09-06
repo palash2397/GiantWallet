@@ -9,6 +9,9 @@ const port = process.env.PORT;
 
 connectDB();
 
+// console.log("TWILIO_ACCOUNT_SID  -------->", process.env.TWILIO_ACCOUNT_SID)
+// console.log("TWILIO_AUTH_TOKEN  -------->",  process.env.TWILIO_AUTH_TOKEN)
+
 import { stripeWebhookHandle } from "./controllers/payment.controller.js";
 app.post(
   "/api/v1/payment/webhook",
