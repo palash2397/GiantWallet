@@ -31,3 +31,11 @@ export const setUploadPath = (folder) => {
     next();
   };
 };
+
+
+export const parseJsonArray = (field, req) => {
+  if (!req.body[field]) return [];
+  return typeof req.body[field] === "string"
+    ? JSON.parse(req.body[field])
+    : req.body[field];
+};

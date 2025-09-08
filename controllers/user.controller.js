@@ -7,6 +7,7 @@ import { User } from "../models/user/user.js";
 import { sendOtpMail, sendOtpforgotPasswordMail } from "../utils/email.js";
 import { deleteOldImages } from "../utils/helpers.js";
 
+
 export const registerHandle = async (req, res) => {
   try {
     const { fullName, email, phone, password } = req.body;
@@ -62,14 +63,14 @@ export const registerHandle = async (req, res) => {
       otpExpireAt,
     });
 
-    let msg = `Your verification code is ${otp}. It will expire in 5 minutes. Do not share this code with anyone`;
-    const smsResult = await sendSms(phone, msg);
-    if (!smsResult.success)
-      return res
-        .status(403)
-        .json(
-          new ApiResponse(400, {}, `Something went wrong while sending sms`)
-        );
+    // let msg = `Your verification code is ${otp}. It will expire in 5 minutes. Do not share this code with anyone`;
+    // const smsResult = await sendSms(phone, msg);
+    // if (!smsResult.success)
+    //   return res
+    //     .status(403)
+    //     .json(
+    //       new ApiResponse(400, {}, `Something went wrong while sending sms`)
+    //     );
 
     await sendOtpMail(fullName, otp, email);
     await user.save();

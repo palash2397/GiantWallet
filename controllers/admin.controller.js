@@ -2,7 +2,9 @@ import Joi from "joi";
 import { User } from "../models/user/user.js";
 import { ApiResponse } from "../utils/ApiReponse.js";
 import { Foundation } from "../models/foundation/foundation.js";
+import { Campaign } from "../models/foundation/campaign.js";
 import { deleteOldImages } from "../utils/helpers.js";
+import { parseJsonArray } from "../utils/helpers.js";
 
 export const createFoundationHandle = async (req, res) => {
   try {
@@ -140,14 +142,65 @@ export const getFoundationHandle = async (req, res) => {
   }
 };
 
-// export const deleteFoundationHandle= async(req, res)=>{
+export const deleteFoundationHandle = async (req, res) => {
+  try {
+    const { id } = req.query;
 
-// }
+    const schema = Joi.object({
+      id: Joi.string().required(),
+    });
+
+    const { error } = schema.validate({ id });
+
+    if (error)
+      return res
+        .status(400)
+        .json(new ApiResponse(400, {}, error.details[0].message));
+
+    const user = await User.findOne({ _id: req.user.id });
+    if (!user)
+      return res.status(404).json(new ApiResponse(404, {}, `User not found`));
+
+    const foundation = await Foundation.findOne({
+      _id: id,
+      userId: req.user.id,
+    });
+
+    if (!foundation)
+      return res
+        .status(404)
+        .json(new ApiResponse(404, {}, `Foundation not found`));
+
+    const campaigns = await Campaign.find({ foundation: id });
+
+    for (const campaign of campaigns) {
+      if (campaign.image) {
+        deleteOldImages("foundation/campaign", campaign.image);
+      }
+      await campaign.deleteOne();
+    }
+
+    if (foundation.logo) {
+      deleteOldImages("foundation/logo", foundation.logo);
+    }
+
+    await Foundation.deleteOne({ _id: id });
+
+    return res
+      .status(201)
+      .json(new ApiResponse(200, {}, `Foundation deleted successfully`));
+  } catch (error) {
+    console.log(`error while deleting foundation ${error}`);
+    res.status(500).json(new ApiResponse(500, {}, `Internal server error`));
+  }
+};
 
 export const createCampaignHandle = async (req, res) => {
   try {
-    const { title, description, eventDate, location, participants } = req.body;
+    const participants = parseJsonArray("participants", req);
+    const { foundationId, title, description, eventDate, location } = req.body;
     const schema = Joi.object({
+      foundationId: Joi.string().required(),
       title: Joi.string().min(3).required(),
       description: Joi.string().min(10).max(500).required(),
       eventDate: Joi.string().required(),
@@ -158,9 +211,17 @@ export const createCampaignHandle = async (req, res) => {
         .required(),
     });
 
-    console.log(`req.participants ---------->`, participants)
+    console.log(`req.participants ---------->`, participants);
 
-    const { error } = schema.validate(req.body);
+    const { error } = schema.validate({
+      foundationId,
+      title,
+      description,
+      eventDate,
+      location,
+      participants,
+    });
+
     if (error)
       return res
         .status(400)
@@ -169,8 +230,163 @@ export const createCampaignHandle = async (req, res) => {
     const user = await User.findOne({ _id: req.user.id });
     if (!user)
       return res.status(404).json(new ApiResponse(404, {}, `User not found`));
+
+    const foundation = await Foundation.findOne({
+      _id: foundationId,
+      userId: req.user.id,
+    });
+    if (!foundation)
+      return res
+        .status(404)
+        .json(new ApiResponse(404, {}, `foundation not found`));
+
+    const data = await Campaign.create({
+      foundation: foundationId,
+      title: title,
+      description: description,
+      eventDate: eventDate,
+      image: req.file ? req.file.filename : "",
+      location: location,
+      participants: participants,
+    });
+
+    return res
+      .status(201)
+      .json(new ApiResponse(200, data._id, `Campaign created successfully `));
   } catch (error) {
     console.log(`error while getting foundation ${error}`);
+    res.status(500).json(new ApiResponse(500, {}, `Internal server error`));
+  }
+};
+
+export const getCampaignHandle = async (req, res) => {
+  try {
+    const { foundationId, campaignId } = req.body;
+    const schema = Joi.object({
+      foundationId: Joi.string().required(),
+    });
+
+    const { error } = schema.validate({ foundationId });
+
+    if (error)
+      return res
+        .status(400)
+        .json(new ApiResponse(400, {}, error.details[0].message));
+
+    const foundation = await Foundation.findOne({
+      _id: foundationId,
+      userId: req.user.id,
+    });
+    if (!foundation)
+      return res
+        .status(404)
+        .json(new ApiResponse(404, {}, `foundation not found`));
+
+    if (campaignId) {
+      const campaign = await Campaign.findOne({ _id: campaignId })
+        .populate("participants", "_id fullName avatar")
+        .select("-__v -createdAt -updatedAt");
+      if (!campaign)
+        return res
+          .status(404)
+          .json(new ApiResponse(404, {}, `campaign not found`));
+
+      campaign.image = campaign.image
+        ? `${process.env.BASE_URL}/foundation/campaign/${campaign.image}`
+        : process.env.DEFAULT_IMAGE;
+
+      campaign.participants.map((item) => {
+        item.avatar = item.avatar
+          ? `${process.env.BASE_URL}/foundation/logo/${item.image}`
+          : process.env.DEFAULT_PROFILE_PIC;
+      });
+      return res
+        .status(201)
+        .json(new ApiResponse(200, campaign, `campaign fetched successfully`));
+    }
+
+    const campaigns = await Campaign.find({
+      foundation: foundationId,
+    })
+      .populate("participants", "_id fullName avatar")
+      .select("-__v -createdAt -updatedAt");
+
+    if (!campaigns || campaigns.length == 0)
+      return res.status(401).json(new ApiResponse(400, {}, `data not found`));
+
+    campaigns.map((data) => {
+      data.image = data.image
+        ? `${process.env.BASE_URL}/foundation/campaign/${data.image}`
+        : process.env.DEFAULT_IMAGE;
+      data.participants.map((item) => {
+        console.log("---------------->", item);
+        item.avatar = item.avatar
+          ? `${process.env.BASE_URL}/foundation/logo/${item.avatar}`
+          : process.env.DEFAULT_PROFILE_PIC;
+      });
+    });
+
+    return res
+      .status(201)
+      .json(new ApiResponse(200, campaigns, `campaigns fetched successfully`));
+  } catch (error) {
+    console.log(`error while getting campaign ${error}`);
+    res.status(500).json(new ApiResponse(500, {}, `Internal server error`));
+  }
+};
+
+export const updateCampaignHandle = async (req, res) => {
+  try {
+  } catch (error) {
+    console.log(`error while updating campaign ${error}`);
+    res.status(500).json(new ApiResponse(500, {}, `Internal server error`));
+  }
+};
+
+export const deleteCampaignHandle = async (req, res) => {
+  try {
+    const { foundationId, campaignId } = req.body;
+    const schema = Joi.object({
+      foundationId: Joi.string().required(),
+      campaignId: Joi.string().required(),
+    });
+
+    const { error } = schema.validate(req.body);
+
+    if (error)
+      return res
+        .status(400)
+        .json(new ApiResponse(400, {}, error.details[0].message));
+
+    const foundation = await Foundation.findOne({
+      _id: foundationId,
+      userId: req.user.id,
+    });
+    if (!foundation)
+      return res
+        .status(404)
+        .json(new ApiResponse(404, {}, `foundation not found`));
+
+    const campaign = await Campaign.findOne({
+      _id: campaignId,
+      foundation: foundationId,
+    });
+
+    if (!campaign)
+      return res
+        .status(404)
+        .json(new ApiResponse(404, {}, `foundation not found`));
+
+    deleteOldImages("foundation/campaign", campaign.image);
+    await Campaign.deleteOne({
+      _id: campaignId,
+    });
+
+    res
+      .status(201)
+      .json(new ApiResponse(201, {}, `campaign deleted successfully`));
+  } catch (error) {
+    console.log(`error while updating campaign ${error}`);
     res.status(500).json(new ApiResponse(500, {}, `Internal server error`));
   }
 };
