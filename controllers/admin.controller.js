@@ -3,6 +3,7 @@ import { User } from "../models/user/user.js";
 import { ApiResponse } from "../utils/ApiReponse.js";
 import { Foundation } from "../models/foundation/foundation.js";
 import { Campaign } from "../models/foundation/campaign.js";
+import { Faq } from "../models/admin/Faq.js";
 import { deleteOldImages } from "../utils/helpers.js";
 import { parseJsonArray } from "../utils/helpers.js";
 
@@ -387,6 +388,75 @@ export const deleteCampaignHandle = async (req, res) => {
       .json(new ApiResponse(201, {}, `campaign deleted successfully`));
   } catch (error) {
     console.log(`error while updating campaign ${error}`);
+    res.status(500).json(new ApiResponse(500, {}, `Internal server error`));
+  }
+};
+
+export const addFaqHandle = async (req, res) => {
+  try {
+    const { que, ans } = req.body;
+    const schema = Joi.object({
+      que: Joi.string().required(),
+      ans: Joi.string().required(),
+    });
+
+    const { error } = schema.validate(req.body);
+
+    if (error)
+      return res
+        .status(400)
+        .json(new ApiResponse(400, {}, error.details[0].message));
+
+    const user = await User.findOne({ _id: req.user.id });
+    if (!user)
+      return res.status(404).json(new ApiResponse(404, {}, `User not found`));
+
+    const data = await Faq.create({
+      question: que,
+      answer: ans,
+    });
+
+    return res
+      .status(201)
+      .json(new ApiResponse(200, data._id, `Faq added successfully`));
+  } catch (error) {
+    console.log(`error while adding faq ${error}`);
+    res.status(500).json(new ApiResponse(500, {}, `Internal server error`));
+  }
+};
+
+export const getFaqHandle = async (req, res) => {
+  try {
+    const data = Faq.find();
+
+    return res
+      .status(201)
+      .json(new ApiResponse(200, data, `Faq added successfully`));
+  } catch (error) {
+    console.log(`error while getting faq ${error}`);
+    res.status(500).json(new ApiResponse(500, {}, `Internal server error`));
+  }
+};
+
+export const deleteFaqHandle = async (req, res) => {
+  try {
+    const { id } = req.query;
+
+    const schema = Joi.object({
+      id: Joi.string().required(),
+    });
+
+    const { error } = schema.validate({ id });
+
+    if (error)
+      return res
+        .status(400)
+        .json(new ApiResponse(400, {}, error.details[0].message));
+
+    await Faq.deleteOne({ _id: id });
+    res.status(201).json(new ApiResponse(200, {}, `faq deleted successfully`));
+  } catch (error) {
+    console.log(`error while deleting faq ${error}`);
     res.status(500).json(new ApiResponse(500, {}, `Internal server error`));
   }
 };

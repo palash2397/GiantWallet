@@ -6,7 +6,10 @@ import {
   createCampaignHandle,
   getCampaignHandle,
   deleteCampaignHandle,
-  deleteFoundationHandle
+  deleteFoundationHandle,
+  addFaqHandle,
+  deleteFaqHandle,
+  getFaqHandle
 } from "../controllers/admin.controller.js";
 import { auth, isAdmin } from "../middlewares/auth.js";
 import { upload } from "../middlewares/multer.js";
@@ -34,9 +37,17 @@ adminRouter.patch(
 
 adminRouter.delete("/foundation", auth, isAdmin, deleteFoundationHandle)
 adminRouter.get("/foundation", auth, isAdmin, getFoundationHandle)
+
+
 adminRouter.post("/campaign", auth, isAdmin, setUploadPath("foundation/campaign"), upload.single("image"),createCampaignHandle)
 adminRouter.get("/campaign", auth, isAdmin, getCampaignHandle)
 adminRouter.delete("/campaign", auth, isAdmin, deleteCampaignHandle)
+
+
+
+adminRouter.post("/faq", auth, isAdmin, addFaqHandle)
+adminRouter.get("/faq", auth, isAdmin, getFaqHandle)
+adminRouter.delete("/faq", auth, isAdmin, deleteFaqHandle)
 
 
 
