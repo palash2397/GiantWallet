@@ -427,7 +427,7 @@ export const addFaqHandle = async (req, res) => {
 
 export const getFaqHandle = async (req, res) => {
   try {
-    const data = Faq.find();
+    const data = await Faq.find().select("-__v -createdAt -updatedAt")
 
     return res
       .status(201)

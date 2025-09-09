@@ -46,7 +46,7 @@ adminRouter.delete("/campaign", auth, isAdmin, deleteCampaignHandle)
 
 
 adminRouter.post("/faq", auth, isAdmin, addFaqHandle)
-adminRouter.get("/faq", auth, isAdmin, getFaqHandle)
+adminRouter.get("/faq", getFaqHandle)
 adminRouter.delete("/faq", auth, isAdmin, deleteFaqHandle)
 
 
