@@ -6,7 +6,7 @@ import { generateOtp, getExpirationTime } from "../utils/helpers.js";
 import { User } from "../models/user/user.js";
 import { sendOtpMail, sendOtpforgotPasswordMail } from "../utils/email.js";
 import { deleteOldImages } from "../utils/helpers.js";
-
+import { uploadOnCloudinary } from "../utils/cloudinary.js";
 
 export const registerHandle = async (req, res) => {
   try {
@@ -70,7 +70,7 @@ export const registerHandle = async (req, res) => {
         .status(403)
         .json(
           new ApiResponse(400, {}, `Something went wrong while sending sms`)
-       );
+        );
 
     await sendOtpMail(fullName, otp, email);
     await user.save();
@@ -560,6 +560,13 @@ export const updateProfileHandle = async (req, res) => {
       return res.status(404).json(new ApiResponse(404, {}, `User not found`));
 
     if (req.file) deleteOldImages("profile", user.avatar);
+    console.log("req.file ----->", req.file);
+
+    // const localFilePath = req.file ? req.file.path : null;
+    // if (localFilePath) {
+
+    // }
+    // const result = await uploadOnCloudinary(localFilePath);  
 
     fullName ? (user.fullName = fullName) : user.fullName;
     req.file ? (user.avatar = req.file.filename) : user.avatar;
@@ -567,8 +574,12 @@ export const updateProfileHandle = async (req, res) => {
       ? ((user.latitude = latitude), (user.longitude = longitude))
       : user.latitude,
       user.longitude;
-
     await user.save();
+
+    // const localFilePath = req.file ? req.file.path : null;
+    // if (localFilePath) 
+    //   const result = await uploadOnCloudinary(localFilePath);  
+    
 
     return res
       .status(200)
@@ -665,7 +676,7 @@ export const changePasswordHandle = async (req, res) => {
       return res
         .status(400)
         .json({ status: false, message: error.details[0].message });
-    const user = await User.findOne({ _id: req.user.id })
+    const user = await User.findOne({ _id: req.user.id });
 
     if (!user)
       return res.status(404).json(new ApiResponse(404, {}, `User not found`));

@@ -6,6 +6,8 @@ import { Campaign } from "../models/foundation/campaign.js";
 import { Faq } from "../models/admin/Faq.js";
 import { deleteOldImages } from "../utils/helpers.js";
 import { parseJsonArray } from "../utils/helpers.js";
+import { uploadOnCloudinary } from "../utils/cloudinary.js";
+
 
 export const createFoundationHandle = async (req, res) => {
   try {
@@ -26,11 +28,18 @@ export const createFoundationHandle = async (req, res) => {
     const user = await User.findOne({ _id: req.user.id });
     if (!user)
       return res.status(404).json(new ApiResponse(404, {}, `User not found`));
+    
+    const localFilePath = req.file ? req.file.path : null;
+
+    let result;
+    if (localFilePath) {
+       result = await uploadOnCloudinary(localFilePath)
+    }
 
     await Foundation.create({
       name,
       description,
-      logo: req.file ? req.file.filename : null,
+      logo: req.file ? result.url : null,
       website: website ? website : null,
       userId: user._id,
     });
@@ -97,8 +106,6 @@ export const getFoundationHandle = async (req, res) => {
   try {
     const { id } = req.query;
 
-
-
     if (id) {
       const data = await Foundation.findOne({ _id: id }).populate(
         "userId",
@@ -111,7 +118,7 @@ export const getFoundationHandle = async (req, res) => {
           .json(new ApiResponse(400, {}, `Foundation not found`));
 
       data.logo = data.logo
-        ? `${process.env.BASE_URL}/foundation/logo/${data.logo}`
+        ? data.logo
         : `${process.env.DEFAULT_IMAGE}`;
 
       return res
@@ -128,7 +135,7 @@ export const getFoundationHandle = async (req, res) => {
 
     data.map((item) => {
       item.logo = item.logo
-        ? `${process.env.BASE_URL}/foundation/logo/${item.logo}`
+        ? item.logo
         : `${process.env.DEFAULT_IMAGE}`;
     });
 
@@ -274,7 +281,6 @@ export const getCampaignHandle = async (req, res) => {
 
     const foundation = await Foundation.findOne({
       _id: foundationId,
- 
     });
     if (!foundation)
       return res
@@ -313,16 +319,22 @@ export const getCampaignHandle = async (req, res) => {
     if (!campaigns || campaigns.length == 0)
       return res.status(401).json(new ApiResponse(400, {}, `data not found`));
 
-    campaigns.map((data) => {
+    campaigns.forEach((data) => {
       data.image = data.image
         ? `${process.env.BASE_URL}/foundation/campaign/${data.image}`
         : process.env.DEFAULT_IMAGE;
-      data.participants.map((item) => {
-        console.log("---------------->", item);
-        item.avatar = item.avatar
-          ? `${process.env.BASE_URL}/foundation/logo/${item.avatar}`
-          : process.env.DEFAULT_PROFILE_PIC;
-      });
+
+      if (data.participants && data.participants.length > 0) {
+        data.participants.forEach((item) => {
+          if (!item.avatar) {
+            item.avatar = process.env.DEFAULT_PROFILE_PIC;
+          } else if (item.avatar.startsWith("http")) {
+            item.avatar = item.avatar;
+          } else {
+            item.avatar = `${process.env.BASE_URL}/foundation/logo/${item.avatar}`;
+          }
+        });
+      }
     });
 
     return res
@@ -336,6 +348,7 @@ export const getCampaignHandle = async (req, res) => {
 
 export const updateCampaignHandle = async (req, res) => {
   try {
+    
   } catch (error) {
     console.log(`error while updating campaign ${error}`);
     res.status(500).json(new ApiResponse(500, {}, `Internal server error`));
@@ -425,7 +438,7 @@ export const addFaqHandle = async (req, res) => {
 
 export const getFaqHandle = async (req, res) => {
   try {
-    const data = await Faq.find().select("-__v -createdAt -updatedAt")
+    const data = await Faq.find().select("-__v -createdAt -updatedAt");
 
     return res
       .status(201)
