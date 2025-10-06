@@ -4,7 +4,7 @@ import { fetchTokenHandle, submitTokenHandle, userAllTokenHandle } from "../cont
 
 
 const tokenRouter = Router();
-tokenRouter.get("/details", fetchTokenHandle)
+tokenRouter.post("/details", fetchTokenHandle)
 tokenRouter.post("/submit", auth, submitTokenHandle)
 tokenRouter.get("/all", auth, userAllTokenHandle)
 

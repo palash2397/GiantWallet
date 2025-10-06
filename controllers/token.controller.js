@@ -5,7 +5,6 @@ import ABI from "../Web3/ABI/tokenAbi.json"  with { type: "json" }
 import Joi from "joi";
 
 
-
 export const fetchTokenHandle = async (req, res) => {
     try {
         const { contractAddress, rpcUrl } = req.body;
@@ -110,9 +109,12 @@ export const submitTokenHandle = async (req, res) => {
 export const userAllTokenHandle = async (req, res) => {
     try {
         const tokens = await Token.find({ userId: req.user.id })
+        
         if (!tokens || tokens.length == 0)
             return res.status(404).json(new ApiResponse(404, {}, `No tokens found`));
         return res.status(200).json(new ApiResponse(200, tokens, `Tokens fetched successfully`));
+
+
 
 
     } catch (error) {

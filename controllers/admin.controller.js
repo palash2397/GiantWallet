@@ -452,7 +452,6 @@ export const getFaqHandle = async (req, res) => {
 export const deleteFaqHandle = async (req, res) => {
   try {
     const { id } = req.query;
-
     const schema = Joi.object({
       id: Joi.string().required(),
     });
