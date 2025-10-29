@@ -530,6 +530,7 @@ export const verifyPinHandle = async (req, res) => {
 
 export const changePinHandle = async (req, res) => {
   try {
+    
   } catch (error) {
     console.log(`Error while changing pin :`, error);
     return res

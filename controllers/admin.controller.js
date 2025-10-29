@@ -11,12 +11,12 @@ import { uploadOnCloudinary } from "../utils/cloudinary.js";
 
 export const createFoundationHandle = async (req, res) => {
   try {
-    const { name, description, website } = req.body;
-    const schema = Joi.object({
-      name: Joi.string().min(3).required(),
-      description: Joi.string().min(10).max(500).required(),
-      website: Joi.string().optional(),
-    });
+      const { name, description, website } = req.body;
+      const schema = Joi.object({
+        name: Joi.string().min(3).required(),
+        description: Joi.string().min(10).max(500).required(),
+        website: Joi.string().optional(),
+      });
 
     const { error } = schema.validate(req.body);
 

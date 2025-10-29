@@ -22,13 +22,14 @@ app.post(
 app.use(morgan("dev"));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
 app.use(
   cors({
     origin: process.env.CORS_ORIGIN,
   })
 );
-
 app.use("/api/v1",express.static("public"))
+
 
 import rootRouter from "./routes/root.routes.js";
 app.use("/api/v1", rootRouter);
