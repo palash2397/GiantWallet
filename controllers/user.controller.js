@@ -6,6 +6,7 @@ import { generateOtp, getExpirationTime } from "../utils/helpers.js";
 import { User } from "../models/user/user.js";
 import { sendOtpMail, sendOtpforgotPasswordMail } from "../utils/email.js";
 import { deleteOldImages } from "../utils/helpers.js";
+import { redis } from "../DB/redis.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 
 export const registerHandle = async (req, res) => {
@@ -530,7 +531,6 @@ export const verifyPinHandle = async (req, res) => {
 
 export const changePinHandle = async (req, res) => {
   try {
-    
   } catch (error) {
     console.log(`Error while changing pin :`, error);
     return res
@@ -567,7 +567,7 @@ export const updateProfileHandle = async (req, res) => {
     // if (localFilePath) {
 
     // }
-    // const result = await uploadOnCloudinary(localFilePath);  
+    // const result = await uploadOnCloudinary(localFilePath);
 
     fullName ? (user.fullName = fullName) : user.fullName;
     req.file ? (user.avatar = req.file.filename) : user.avatar;
@@ -578,9 +578,8 @@ export const updateProfileHandle = async (req, res) => {
     await user.save();
 
     // const localFilePath = req.file ? req.file.path : null;
-    // if (localFilePath) 
-    //   const result = await uploadOnCloudinary(localFilePath);  
-    
+    // if (localFilePath)
+    //   const result = await uploadOnCloudinary(localFilePath);
 
     return res
       .status(200)
@@ -593,9 +592,56 @@ export const updateProfileHandle = async (req, res) => {
   }
 };
 
+// export const myProfileHandle = async (req, res) => {
+//   try {
+//     const user = await User.findOne({ _id: req.user.id }).select(
+//       "-password -otp -otpExpireAt -__v -createdAt -updatedAt -pin -otpVerifiedForResetPassword"
+//     );
+
+//     if (!user)
+//       return res.status(404).json(new ApiResponse(404, {}, `User not found`));
+
+//     if (!user.isActive)
+//       return res
+//         .status(400)
+//         .json(
+//           new ApiResponse(400, {}, `your account has been temporarily blocked.`)
+//         );
+
+//     user.avatar = user.avatar
+//       ? `${process.env.BASE_URL}/profile/${user.avatar}`
+//       : `${process.env.DEFAULT_PROFILE_PIC}`;
+
+//     return res
+//       .status(200)
+//       .json(new ApiResponse(200, user, `Profile fetched successfully.`));
+//   } catch (error) {
+//     console.log(`Error while fetching profile :`, error);
+//     return res
+//       .status(501)
+//       .json(new ApiResponse(500, {}, `Internal Server Error`));
+//   }
+// };
+
 export const myProfileHandle = async (req, res) => {
   try {
-    const user = await User.findOne({ _id: req.user.id }).select(
+    const userId = req.user.id;
+
+    const cachedProfile = await redis.get(`user:${userId}:profile`);
+
+    if (cachedProfile) {
+      console.log("📌 Profile served from Redis cache");
+
+      const user = JSON.parse(cachedProfile);
+
+      return res
+        .status(200)
+        .json(
+          new ApiResponse(200, user, `Profile fetched successfully (cache).`)
+        );
+    }
+
+    const user = await User.findOne({ _id: userId }).select(
       "-password -otp -otpExpireAt -__v -createdAt -updatedAt -pin -otpVerifiedForResetPassword"
     );
 
@@ -612,6 +658,14 @@ export const myProfileHandle = async (req, res) => {
     user.avatar = user.avatar
       ? `${process.env.BASE_URL}/profile/${user.avatar}`
       : `${process.env.DEFAULT_PROFILE_PIC}`;
+
+    await redis.set(
+      `user:${userId}:profile`,
+      JSON.stringify(user),
+      { EX: 300 } // ⏳ expires in 5 minutes
+    );
+
+    console.log("📌 Profile served from Database & Cached");
 
     return res
       .status(200)
